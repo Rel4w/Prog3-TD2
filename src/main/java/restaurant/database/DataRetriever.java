@@ -363,7 +363,7 @@ public class DataRetriever {
         }
 
         if (category != null) {
-            queryBuilder.append(" AND i.category = ?");
+            queryBuilder.append(" AND i.category::text = ?");
             parameters.add(category.name());
         }
 
