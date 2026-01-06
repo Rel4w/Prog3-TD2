@@ -9,6 +9,7 @@ public class Ingredient {
     private CategoryEnum category;
     private Integer dishId;
 
+    // Constructeurs
     public Ingredient() {}
 
     public Ingredient(String name, Double price, CategoryEnum category) {
@@ -25,6 +26,7 @@ public class Ingredient {
         this.dishId = dishId;
     }
 
+    // Getters et Setters
     public Integer getId() {
         return id;
     }
