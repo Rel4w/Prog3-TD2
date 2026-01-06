@@ -18,7 +18,7 @@ public class DBConnection {
         }
     }
 
-    public Connection getDBConnection() throws SQLException {
+    public static Connection getDBConnection() throws SQLException {
         String url = dotenv.get("DB_URL");
         String user = dotenv.get("DB_USER");
         String password = dotenv.get("DB_PASSWORD");
