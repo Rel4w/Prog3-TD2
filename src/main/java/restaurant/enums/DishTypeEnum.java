@@ -1,4 +1,7 @@
 package restaurant.enums;
 
-public class DishTypeEnum {
+public enum DishTypeEnum {
+    START,
+    MAIN,
+    DESSERT
 }
