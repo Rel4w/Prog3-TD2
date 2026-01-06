@@ -1,4 +1,9 @@
 package restaurant.enums;
 
-public class CategoryEnum {
+public enum CategoryEnum {
+    VEGETABLE,
+    ANIMAL,
+    MARINE,
+    DAIRY,
+    OTHER
 }
