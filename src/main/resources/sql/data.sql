@@ -6,15 +6,13 @@ INSERT INTO Dish (id, name, dish_type) VALUES
                                            (4, 'Gâteau au chocolat', 'DESSERT'),
                                            (5, 'Salade de fruits', 'DESSERT');
 
--- Insertion des données dans la table Ingredient
-INSERT INTO Ingredient (id, name, price, category, id_dish) VALUES
-                                                                (1, 'Laitue', 800.00, 'VEGETABLE', 1),
-                                                                (2, 'Tomate', 600.00, 'VEGETABLE', 1),
-                                                                (3, 'Poulet', 4500.00, 'ANIMAL', 2),
-                                                                (4, 'Chocolat', 3000.00, 'OTHER', 4),
-                                                                (5, 'Beurre', 2500.00,
-                                                                 'DAIRY', 4);
+-- Insertion des données dans la table Ingredient AVEC required_quantity
+INSERT INTO Ingredient (id, name, price, category, id_dish, required_quantity) VALUES
+                                                                                   (1, 'Laitue', 800.00, 'VEGETABLE', 1, 1),
+                                                                                   (2, 'Tomate', 600.00, 'VEGETABLE', 1, 2),
+                                                                                   (3, 'Poulet', 4500.00, 'ANIMAL', 2, 0.5),
+                                                                                   (4, 'Chocolat', 3000.00, 'OTHER', 4, NULL),
+                                                                                   (5, 'Beurre', 2500.00, 'DAIRY', 4, NULL);
 
-
-SELECT setval('dish_id_seq' , (SELECT MAX(id) FROM Dish));
+SELECT setval('dish_id_seq', (SELECT MAX(id) FROM Dish));
 SELECT setval('ingredient_id_seq', (SELECT MAX(id) FROM Ingredient));

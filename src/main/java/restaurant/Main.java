@@ -6,7 +6,7 @@ import restaurant.models.Ingredient;
 import restaurant.enums.CategoryEnum;
 import restaurant.enums.DishTypeEnum;
 
-import java.util.Arrays;
+import java.util.ArrayList;
 import java.util.List;
 
 public class Main {
@@ -14,72 +14,162 @@ public class Main {
         DataRetriever retriever = new DataRetriever();
 
         try {
-            // Test1
-            System.out.println("\nTest a) findDishById(1):");
-            Dish dish1 = retriever.findDishById(1);
-            System.out.println("Résultat: " + dish1.getName() + " avec " + dish1.getIngredients().size() + " ingrédients");
+            // TEST 1: Dish findDishById avec getDishCost
+            System.out.println("1. TEST DE Dish findDishById avec getDishCost()");
 
-            // Test2
-            System.out.println("\nTest b) findDishById(999):");
-            try {
-                retriever.findDishById(999);
-                System.out.println("ERREUR: Devrait lever une exception!");
-            } catch (RuntimeException e) {
-                System.out.println("Exception attendue: " + e.getMessage());
+            // Test a: Plat avec quantité connue
+            System.out.println("\na) findDishById(1) - Salade fraîche:");
+            Dish salade = retriever.findDishById(1);
+            System.out.println("• Plat: " + salade.getName());
+            System.out.println("• Type: " + salade.getDishType());
+            System.out.println("• Ingrédients: " + salade.getIngredients().size());
+
+            for (Ingredient ing : salade.getIngredients()) {
+                System.out.println("  - " + ing.getName() +
+                        " (Prix: " + ing.getPrice() +
+                        ", Quantité: " + ing.getRequiredQuantity() + ")");
             }
 
-            // Test3
-            System.out.println("\nTest c) findIngredients(page=2, size=2):");
-            List<Ingredient> page2 = retriever.findIngredients(2, 2);
-            System.out.println("Résultats attendus: Poulet, Chocolat");
-            System.out.println("Résultats obtenus:");
-            page2.forEach(i -> System.out.println("  - " + i.getName()));
+            try {
+                double cout = salade.getDishCost();
+                System.out.println("\n• getDishCost() = " + cout + " Ar");
+                System.out.println("COMPORTEMENT ATTENDU: Coût calculé ");
+            } catch (Exception e) {
+                System.out.println("\n• Exception: " + e.getMessage());
+                System.out.println("COMPORTEMENT INATTENDU!");
+            }
 
-            // Test4
-            System.out.println("\nTest d) findIngredients(page=3, size=5):");
-            List<Ingredient> page3 = retriever.findIngredients(3, 5);
-            System.out.println("Résultats attendus: Liste vide");
-            System.out.println("Taille: " + page3.size());
+            // Test b: Plat avec quantité inconnue
+            System.out.println("\n\nb) findDishById(4) - Gâteau au chocolat:");
+            Dish gateau = retriever.findDishById(4);
+            System.out.println("• Plat: " + gateau.getName());
+            System.out.println("• Ingrédients: " + gateau.getIngredients().size());
 
-            // Test5
-            System.out.println("\nTest e) findDishsByIngredientName('eur'):");
-            List<Dish> dishesWithEur = retriever.findDishsByIngredientName("eur");
-            System.out.println("Résultat attendu: Plat - Gâteau au chocolat");
-            System.out.println("Résultats obtenus:");
-            dishesWithEur.forEach(d -> System.out.println("  - " + d.getName()));
+            for (Ingredient ing : gateau.getIngredients()) {
+                System.out.println("  - " + ing.getName() +
+                        " (Prix: " + ing.getPrice() +
+                        ", Quantité: " + (ing.getRequiredQuantity() != null ? ing.getRequiredQuantity() : "NULL") + ")");
+            }
 
-            // Test6
-            System.out.println("\nTest f) findIngredientsByCriteria:");
-            System.out.println("Paramètres: ingredientName=null, category=VEGETABLE, dishName=null, page=1, size=10");
-            System.out.println("Résultat attendu: Laitue, Tomate");
-            List<Ingredient> vegetables = retriever.findIngredientsByCriteria(
-                    null, CategoryEnum.VEGETABLE, null, 1, 10
-            );
-            System.out.println("Résultats obtenus:");
-            vegetables.forEach(i -> System.out.println("  - " + i.getName()));
+            try {
+                double cout = gateau.getDishCost();
+                System.out.println("\n• getDishCost() = " + cout + " Ar");
+                System.out.println("COMPORTEMENT INATTENDU: Devrait lever une exception!");
+            } catch (Exception e) {
+                System.out.println("\n• Exception levée: " + e.getMessage());
+                System.out.println("COMPORTEMENT ATTENDU: Exception quand quantité inconnue ");
+            }
 
-            // Test7
-            System.out.println("\nTest g) findIngredientsByCriteria:");
-            System.out.println("Paramètres: ingredientName='cho', category=null, dishName='Sal', page=1, size=10");
-            System.out.println("Résultat attendu: Liste vide");
-            List<Ingredient> emptyResult = retriever.findIngredientsByCriteria(
-                    "cho", null, "Sal", 1, 10
-            );
-            System.out.println("Résultats: " + emptyResult.size());
+            // TEST 2: Dish saveDish - Création nouveau plat
+            System.out.println("\n\n2. TEST DE Dish saveDish - Création");
 
-            // Test8
-            System.out.println("\nTest h) findIngredientsByCriteria:");
-            System.out.println("Paramètres: ingredientName='cho', category=null, dishName='gâteau', page=1, size=10");
-            System.out.println("Résultat attendu: Chocolat");
-            List<Ingredient> chocolatResult = retriever.findIngredientsByCriteria(
-                    "cho", null, "gâteau", 1, 10
-            );
-            System.out.println("Résultats obtenus:");
-            chocolatResult.forEach(i -> System.out.println("  - " + i.getName()));
+            List<Ingredient> ingredientsExistants = retriever.findIngredients(1, 10);
+            if (!ingredientsExistants.isEmpty()) {
+                Ingredient ingredientExistant = ingredientsExistants.get(0);
+                System.out.println("• Ingrédient existant utilisé: " + ingredientExistant.getName());
+
+                Dish soupe = new Dish();
+                soupe.setName("Soupe de légumes");
+                soupe.setDishType(DishTypeEnum.START);
+
+                List<Ingredient> ingredientsSoupe = new ArrayList<>();
+                ingredientsSoupe.add(ingredientExistant);
+                soupe.setIngredients(ingredientsSoupe);
+
+                try {
+                    Dish soupeSauvegardee = retriever.saveDish(soupe);
+                    System.out.println("• Plat créé avec ID: " + soupeSauvegardee.getId());
+                    System.out.println("COMPORTEMENT ATTENDU: Plat créé ");
+
+                    try {
+                        double coutSoupe = soupeSauvegardee.getDishCost();
+                        System.out.println("• Coût du nouveau plat: " + coutSoupe + " Ar");
+                    } catch (Exception e) {
+                        System.out.println("• Coût non calculable: " + e.getMessage());
+                    }
+
+                } catch (Exception e) {
+                    System.out.println("• ERREUR création plat: " + e.getMessage());
+                    System.out.println("Problème dans saveDish()");
+                }
+            }
+
+            // TEST 3: Dish saveDish - Mise à jour plat existant
+            System.out.println("\n\n3. TEST DE Dish saveDish - Maj");
+
+            System.out.println("\na) Mise à jour Salade fraîche (ID 1):");
+
+            Dish saladeAModifier = retriever.findDishById(1);
+            System.out.println("• Plat avant: " + saladeAModifier.getName());
+            System.out.println("• Ingrédients avant: " + saladeAModifier.getIngredients().size());
+
+            String ancienNom = saladeAModifier.getName();
+            saladeAModifier.setName("Salade fraîche MODIFIÉE");
+
+            try {
+                Dish saladeModifiee = retriever.saveDish(saladeAModifier);
+                System.out.println("• Plat après: " + saladeModifiee.getName());
+                System.out.println("• Ingrédients après: " + saladeModifiee.getIngredients().size());
+                System.out.println("COMPORTEMENT ATTENDU: Plat mis à jour ");
+
+                try {
+                    double cout = saladeModifiee.getDishCost();
+                    System.out.println("• Coût après modification: " + cout + " Ar");
+                } catch (Exception e) {
+                    System.out.println("• Coût après modification: " + e.getMessage());
+                }
+
+                saladeModifiee.setName(ancienNom);
+                retriever.saveDish(saladeModifiee);
+
+            } catch (Exception e) {
+                System.out.println("• ERREUR mise à jour: " + e.getMessage());
+            }
+
+            // TEST 4: Modification majeure (garder seulement fromage)
+            System.out.println("\n\n4. TEST DE MODIFICATION MAJEURE");
+
+            System.out.println(" Garder seulement fromage dans Salade fraîche:");
+
+            boolean fromageExiste = false;
+            for (Ingredient ing : ingredientsExistants) {
+                if (ing.getName().toLowerCase().contains("fromage")) {
+                    fromageExiste = true;
+                    break;
+                }
+            }
+
+            if (fromageExiste) {
+                System.out.println("• Fromage existe dans la base");
+
+                Dish saladeFinale = retriever.findDishById(1);
+                saladeFinale.setName("Salade de fromage");
+
+                List<Ingredient> seulementFromage = new ArrayList<>();
+                for (Ingredient ing : saladeFinale.getIngredients()) {
+                    if (ing.getName().toLowerCase().contains("fromage")) {
+                        seulementFromage.add(ing);
+                    }
+                }
+
+                saladeFinale.setIngredients(seulementFromage);
+
+                try {
+                    Dish resultatFinal = retriever.saveDish(saladeFinale);
+                    System.out.println("• Plat modifié: " + resultatFinal.getName());
+                    System.out.println("• Ingrédients restants: " + resultatFinal.getIngredients().size());
+                    System.out.println(" COMPORTEMENT ATTENDU: Modification réussie ");
+
+                } catch (Exception e) {
+                    System.out.println("• ERREUR modification: " + e.getMessage());
+                }
+            } else {
+                System.out.println("• Fromage n'existe pas dans la base - test ignoré");
+            }
 
         } catch (Exception e) {
-            System.err.println("\nERREUR: " + e.getMessage());
-            e.printStackTrace();
+            System.err.println("\n ERREUR GÉNÉRALE DURANT LES TESTS:");
+            System.err.println(e.getMessage());
         }
     }
 }

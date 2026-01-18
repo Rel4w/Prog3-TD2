@@ -56,13 +56,26 @@ public class Dish {
         this.ingredients = ingredients;
     }
 
-    public Double getDishPrice() {
+    public Dish(String name, DishTypeEnum dishType) {
+        this.name = name;
+        this.dishType = dishType;
+        this.ingredients = new ArrayList<>();
+    }
+
+    public Double getDishCost() {
         if (ingredients == null || ingredients.isEmpty()) {
             return 0.0;
         }
-        return ingredients.stream()
-                .mapToDouble(Ingredient::getPrice)
-                .sum();
+
+        double totalCost = 0.0;
+        for (Ingredient ingredient : ingredients) {
+            if (ingredient.getRequiredQuantity() == null) {
+                throw new RuntimeException("Quantité nécessaire inconnue pour l'ingrédient: " +
+                        ingredient.getName() + " dans le plat: " + this.name);
+            }
+            totalCost += ingredient.getPrice() * ingredient.getRequiredQuantity();
+        }
+        return totalCost;
     }
 
     @Override

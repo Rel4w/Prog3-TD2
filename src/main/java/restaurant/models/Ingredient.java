@@ -8,63 +8,48 @@ public class Ingredient {
     private Double price;
     private CategoryEnum category;
     private Integer dishId;
+    private Double requiredQuantity;  // Nouvel attribut
 
     // Constructeurs
     public Ingredient() {}
 
-    public Ingredient(String name, Double price, CategoryEnum category) {
+    public Ingredient(String name, Double price, CategoryEnum category, Double requiredQuantity) {
         this.name = name;
         this.price = price;
         this.category = category;
+        this.requiredQuantity = requiredQuantity;
     }
 
-    public Ingredient(Integer id, String name, Double price, CategoryEnum category, Integer dishId) {
+    public Ingredient(Integer id, String name, Double price, CategoryEnum category,
+                      Integer dishId, Double requiredQuantity) {
         this.id = id;
         this.name = name;
         this.price = price;
         this.category = category;
         this.dishId = dishId;
+        this.requiredQuantity = requiredQuantity;
     }
 
     // Getters et Setters
-    public Integer getId() {
-        return id;
-    }
+    public Integer getId() { return id; }
+    public void setId(Integer id) { this.id = id; }
 
-    public void setId(Integer id) {
-        this.id = id;
-    }
+    public String getName() { return name; }
+    public void setName(String name) { this.name = name; }
 
-    public String getName() {
-        return name;
-    }
+    public Double getPrice() { return price; }
+    public void setPrice(Double price) { this.price = price; }
 
-    public void setName(String name) {
-        this.name = name;
-    }
+    public CategoryEnum getCategory() { return category; }
+    public void setCategory(CategoryEnum category) { this.category = category; }
 
-    public Double getPrice() {
-        return price;
-    }
+    public Integer getDishId() { return dishId; }
+    public void setDishId(Integer dishId) { this.dishId = dishId; }
 
-    public void setPrice(Double price) {
-        this.price = price;
-    }
-
-    public CategoryEnum getCategory() {
-        return category;
-    }
-
-    public void setCategory(CategoryEnum category) {
-        this.category = category;
-    }
-
-    public Integer getDishId() {
-        return dishId;
-    }
-
-    public void setDishId(Integer dishId) {
-        this.dishId = dishId;
+    // Nouveau getter et setter
+    public Double getRequiredQuantity() { return requiredQuantity; }
+    public void setRequiredQuantity(Double requiredQuantity) {
+        this.requiredQuantity = requiredQuantity;
     }
 
     @Override
@@ -75,19 +60,7 @@ public class Ingredient {
                 ", price=" + price +
                 ", category=" + category +
                 ", dishId=" + dishId +
+                ", requiredQuantity=" + requiredQuantity +
                 '}';
-    }
-
-    @Override
-    public boolean equals(Object obj) {
-        if (this == obj) return true;
-        if (obj == null || getClass() != obj.getClass()) return false;
-        Ingredient that = (Ingredient) obj;
-        return name != null && name.equalsIgnoreCase(that.name);
-    }
-
-    @Override
-    public int hashCode() {
-        return name != null ? name.toLowerCase().hashCode() : 0;
     }
 }
