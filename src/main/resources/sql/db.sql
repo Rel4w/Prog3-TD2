@@ -1,15 +1,14 @@
 CREATE DATABASE mini_dish_db;
 
+\c mini_dish_db;
+
 CREATE USER mini_dish_db_manager WITH PASSWORD '1234';
 
 GRANT CONNECT ON DATABASE mini_dish_db TO mini_dish_db_manager;
-
-\c mini_dish_db;
-
 GRANT CREATE ON SCHEMA public TO mini_dish_db_manager;
 
 ALTER DEFAULT PRIVILEGES IN SCHEMA public
-      GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO mini_dish_db_manager;
+    GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO mini_dish_db_manager;
 
-ALTER DEFAULT  PRIVILEGES IN SCHEMA public
-      GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO mini_dish_db_manager;
+ALTER DEFAULT PRIVILEGES IN SCHEMA public
+    GRANT USAGE, SELECT, UPDATE ON SEQUENCES TO mini_dish_db_manager;
