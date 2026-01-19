@@ -621,9 +621,6 @@ public class DataRetriever {
         }
     }
 
-    /**
-     * Méthode pour ajouter un ingrédient à un plat avec quantité
-     */
     public void addIngredientToDish(Integer dishId, Integer ingredientId, Double quantity, String unit) {
         String query = """
             INSERT INTO dishingredient (id_dish, id_ingredient, quantity_required, unit)
