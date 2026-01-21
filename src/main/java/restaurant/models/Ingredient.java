@@ -30,6 +30,7 @@ public class Ingredient {
         this.requiredQuantity = requiredQuantity;
     }
 
+    // Getters et Setters
     public Integer getId() { return id; }
     public void setId(Integer id) { this.id = id; }
 
@@ -45,6 +46,7 @@ public class Ingredient {
     public Integer getDishId() { return dishId; }
     public void setDishId(Integer dishId) { this.dishId = dishId; }
 
+    // Nouveau getter et setter
     public Double getRequiredQuantity() { return requiredQuantity; }
     public void setRequiredQuantity(Double requiredQuantity) {
         this.requiredQuantity = requiredQuantity;
