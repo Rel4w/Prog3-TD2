@@ -46,7 +46,6 @@ public class Ingredient {
     public Integer getDishId() { return dishId; }
     public void setDishId(Integer dishId) { this.dishId = dishId; }
 
-    // Nouveau getter et setter
     public Double getRequiredQuantity() { return requiredQuantity; }
     public void setRequiredQuantity(Double requiredQuantity) {
         this.requiredQuantity = requiredQuantity;
