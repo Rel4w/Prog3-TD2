@@ -8,7 +8,7 @@ public class Ingredient {
     private Double price;
     private CategoryEnum category;
     private Integer dishId;
-    private Double requiredQuantity;  // Nouvel attribut
+    private Double requiredQuantity;
 
     // Constructeurs
     public Ingredient() {}

@@ -581,9 +581,6 @@ public class DataRetriever {
         }
     }
 
-    /**
-     * Méthode utilitaire pour sauvegarder un ingrédient seul
-     */
     public Ingredient saveIngredient(Ingredient ingredient) {
         if (ingredient == null) {
             throw new IllegalArgumentException("L'ingrédient ne peut pas être null");
