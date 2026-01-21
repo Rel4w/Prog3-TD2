@@ -1,4 +1,3 @@
--- schema.sql
 CREATE TYPE dish_type_enum AS ENUM ('START', 'MAIN', 'ESSERT');
 CREATE TYPE category_enum AS ENUM ('VEGETABLE', 'ANIMAL', 'MARINE', 'DAIRY', 'OTHER');
 

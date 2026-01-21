@@ -1,4 +1,3 @@
--- Insertion des données dans la table Dish
 INSERT INTO Dish (id, name, dish_type) VALUES
                                            (1, 'Salade fraîche', 'START'),
                                            (2, 'Poulet grillé', 'MAIN'),
@@ -6,7 +5,6 @@ INSERT INTO Dish (id, name, dish_type) VALUES
                                            (4, 'Gâteau au chocolat', 'DESSERT'),
                                            (5, 'Salade de fruits', 'DESSERT');
 
--- Insertion des données dans la table Ingredient AVEC required_quantity
 INSERT INTO Ingredient (id, name, price, category, id_dish, required_quantity) VALUES
                                                                                    (1, 'Laitue', 800.00, 'VEGETABLE', 1, 1),
                                                                                    (2, 'Tomate', 600.00, 'VEGETABLE', 1, 2),
