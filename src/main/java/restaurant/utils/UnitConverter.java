@@ -10,7 +10,6 @@ public class UnitConverter {
     private static final Map<String, Map<UnitEnum, Map<UnitEnum, Double>>> CONVERSION_TABLE = new HashMap<>();
 
     static {
-        // Initialisation de la table de conversion
         // Tomate
         Map<UnitEnum, Map<UnitEnum, Double>> tomateConversions = new HashMap<>();
         Map<UnitEnum, Double> tomateTo = new HashMap<>();
@@ -19,7 +18,7 @@ public class UnitConverter {
         tomateConversions.put(UnitEnum.KG, tomateTo);
 
         Map<UnitEnum, Double> tomateFromPiece = new HashMap<>();
-        tomateFromPiece.put(UnitEnum.KG, 0.1); // 1 pièce = 0.1 KG
+        tomateFromPiece.put(UnitEnum.KG, 0.1);
         tomateConversions.put(UnitEnum.PIECE, tomateFromPiece);
 
         CONVERSION_TABLE.put("Tomate", tomateConversions);
@@ -32,7 +31,7 @@ public class UnitConverter {
         laitueConversions.put(UnitEnum.KG, laitueTo);
 
         Map<UnitEnum, Double> laitueFromPiece = new HashMap<>();
-        laitueFromPiece.put(UnitEnum.KG, 0.5); // 1 pièce = 0.5 KG
+        laitueFromPiece.put(UnitEnum.KG, 0.5);
         laitueConversions.put(UnitEnum.PIECE, laitueFromPiece);
 
         CONVERSION_TABLE.put("Laitue", laitueConversions);
@@ -46,13 +45,13 @@ public class UnitConverter {
         chocolatConversions.put(UnitEnum.KG, chocolatTo);
 
         Map<UnitEnum, Double> chocolatFromPiece = new HashMap<>();
-        chocolatFromPiece.put(UnitEnum.KG, 0.1); // 1 pièce = 0.1 KG
-        chocolatFromPiece.put(UnitEnum.L, 0.25); // 1 pièce = 0.25 L (car 1 KG = 2.5 L)
+        chocolatFromPiece.put(UnitEnum.KG, 0.1);
+        chocolatFromPiece.put(UnitEnum.L, 0.25);
         chocolatConversions.put(UnitEnum.PIECE, chocolatFromPiece);
 
         Map<UnitEnum, Double> chocolatFromL = new HashMap<>();
-        chocolatFromL.put(UnitEnum.KG, 0.4); // 1 L = 0.4 KG
-        chocolatFromL.put(UnitEnum.PIECE, 4.0); // 1 L = 4 pièces
+        chocolatFromL.put(UnitEnum.KG, 0.4);
+        chocolatFromL.put(UnitEnum.PIECE, 4.0);
         chocolatConversions.put(UnitEnum.L, chocolatFromL);
 
         CONVERSION_TABLE.put("Chocolat", chocolatConversions);
@@ -65,7 +64,7 @@ public class UnitConverter {
         pouletConversions.put(UnitEnum.KG, pouletTo);
 
         Map<UnitEnum, Double> pouletFromPiece = new HashMap<>();
-        pouletFromPiece.put(UnitEnum.KG, 0.125); // 1 pièce = 0.125 KG
+        pouletFromPiece.put(UnitEnum.KG, 0.125);
         pouletConversions.put(UnitEnum.PIECE, pouletFromPiece);
 
         CONVERSION_TABLE.put("Poulet", pouletConversions);
@@ -79,26 +78,18 @@ public class UnitConverter {
         beurreConversions.put(UnitEnum.KG, beurreTo);
 
         Map<UnitEnum, Double> beurreFromPiece = new HashMap<>();
-        beurreFromPiece.put(UnitEnum.KG, 0.25); // 1 pièce = 0.25 KG
-        beurreFromPiece.put(UnitEnum.L, 1.25); // 1 pièce = 1.25 L
+        beurreFromPiece.put(UnitEnum.KG, 0.25);
+        beurreFromPiece.put(UnitEnum.L, 1.25);
         beurreConversions.put(UnitEnum.PIECE, beurreFromPiece);
 
         Map<UnitEnum, Double> beurreFromL = new HashMap<>();
-        beurreFromL.put(UnitEnum.KG, 0.2); // 1 L = 0.2 KG
-        beurreFromL.put(UnitEnum.PIECE, 0.8); // 1 L = 0.8 pièces
+        beurreFromL.put(UnitEnum.KG, 0.2);
+        beurreFromL.put(UnitEnum.PIECE, 0.8);
         beurreConversions.put(UnitEnum.L, beurreFromL);
 
         CONVERSION_TABLE.put("Beurre", beurreConversions);
     }
 
-    /**
-     * Convertit une quantité d'une unité à une autre pour un ingrédient donné
-     * @param ingredientName Nom de l'ingrédient
-     * @param quantity Quantité à convertir
-     * @param fromUnit Unité source
-     * @param toUnit Unité cible
-     * @return Quantité convertie, ou null si la conversion n'est pas possible
-     */
     public static Double convert(String ingredientName, Double quantity,
                                  UnitEnum fromUnit, UnitEnum toUnit) {
         if (fromUnit == toUnit) {
@@ -109,25 +100,22 @@ public class UnitConverter {
                 CONVERSION_TABLE.get(ingredientName);
 
         if (ingredientConversions == null) {
-            return null; // Pas de conversion définie pour cet ingrédient
+            return null;
         }
 
         Map<UnitEnum, Double> fromConversions = ingredientConversions.get(fromUnit);
         if (fromConversions == null) {
-            return null; // Pas de conversion depuis cette unité
+            return null;
         }
 
         Double conversionRate = fromConversions.get(toUnit);
         if (conversionRate == null) {
-            return null; // Conversion spécifique non disponible
+            return null;
         }
 
         return quantity * conversionRate;
     }
 
-    /**
-     * Convertit en KG (unité de base pour les stocks)
-     */
     public static Double convertToKg(String ingredientName, Double quantity, UnitEnum unit) {
         if (unit == UnitEnum.KG) {
             return quantity;
@@ -135,9 +123,6 @@ public class UnitConverter {
         return convert(ingredientName, quantity, unit, UnitEnum.KG);
     }
 
-    /**
-     * Vérifie si une conversion est possible
-     */
     public static boolean canConvert(String ingredientName, UnitEnum fromUnit, UnitEnum toUnit) {
         if (fromUnit == toUnit) return true;
 

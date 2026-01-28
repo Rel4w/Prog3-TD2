@@ -621,8 +621,6 @@ public class DataRetriever {
 
             ResultSet rs = stmt.executeQuery();
 
-            // Au lieu de faire une somme directe, on traite chaque mouvement
-            // pour appliquer les conversions d'unités
             Double currentStock = initialStock;
 
             while (rs.next()) {
@@ -630,7 +628,6 @@ public class DataRetriever {
                 UnitEnum unit = UnitEnum.valueOf(rs.getString("unit"));
                 MovementTypeEnum type = MovementTypeEnum.valueOf(rs.getString("type"));
 
-                // Convertir en KG pour le calcul du stock
                 Double quantityInKg = UnitConverter.convertToKg(
                         ingredient.getName(),
                         quantity,
@@ -638,8 +635,6 @@ public class DataRetriever {
                 );
 
                 if (quantityInKg == null) {
-                    // Si la conversion n'est pas possible, on ignore le mouvement
-                    // ou on lève une exception selon votre politique
                     System.err.println("Conversion impossible pour " + ingredient.getName() +
                             " de " + unit + " vers KG. Mouvement ignoré.");
                     continue;
