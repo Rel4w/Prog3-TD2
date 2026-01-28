@@ -1,14 +1,17 @@
 DROP TABLE IF EXISTS DishIngredient;
 DROP TABLE IF EXISTS Ingredient;
 DROP TABLE IF EXISTS Dish;
+DROP TABLE IF EXISTS stockmovement;
 
 DROP TYPE IF EXISTS dish_type_enum;
 DROP TYPE IF EXISTS category_enum;
 DROP TYPE IF EXISTS unit_enum;
+DROP TYPE IF EXISTS movement_type_enum;
 
 CREATE TYPE dish_type_enum AS ENUM ('START', 'MAIN', 'DESSERT');
 CREATE TYPE category_enum AS ENUM ('VEGETABLE', 'ANIMAL', 'MARINE', 'DAIRY', 'OTHER');
 CREATE TYPE unit_enum AS ENUM ('KG', 'L', 'PIECE', 'UNIT');
+CREATE TYPE movement_type_enum AS ENUM ('IN', 'OUT');
 
 CREATE TABLE Dish (
                       id SERIAL PRIMARY KEY,
@@ -22,7 +25,6 @@ CREATE TABLE Ingredient (
                             name VARCHAR(255) NOT NULL UNIQUE,
                             price NUMERIC(10, 2) NOT NULL,
                             category category_enum NOT NULL
-
 );
 
 CREATE TABLE DishIngredient (
@@ -46,6 +48,22 @@ CREATE TABLE DishIngredient (
                                     UNIQUE (id_dish, id_ingredient)
 );
 
+CREATE TABLE stockmovement (
+                               id SERIAL PRIMARY KEY,
+                               id_ingredient INT NOT NULL,
+                               quantity NUMERIC(10, 3) NOT NULL,
+                               unit unit_enum NOT NULL DEFAULT 'KG',
+                               type movement_type_enum NOT NULL,
+                               creation_datetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                               CONSTRAINT fk_stockmovement_ingredient
+                                   FOREIGN KEY (id_ingredient)
+                                       REFERENCES Ingredient(id)
+                                       ON DELETE CASCADE
+);
+
 CREATE INDEX idx_dishingredient_dish ON DishIngredient(id_dish);
 CREATE INDEX idx_dishingredient_ingredient ON DishIngredient(id_ingredient);
 CREATE INDEX idx_dish_selling_price ON Dish(selling_price);
+CREATE INDEX idx_stockmovement_ingredient ON stockmovement(id_ingredient);
+CREATE INDEX idx_stockmovement_datetime ON stockmovement(creation_datetime);

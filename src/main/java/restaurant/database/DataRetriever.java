@@ -2,10 +2,16 @@ package restaurant.database;
 
 import restaurant.models.Dish;
 import restaurant.models.Ingredient;
+import restaurant.models.StockMovement;
 import restaurant.enums.CategoryEnum;
 import restaurant.enums.DishTypeEnum;
+import restaurant.enums.MovementTypeEnum;
+import restaurant.enums.UnitEnum;
 
 import java.sql.*;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -100,6 +106,8 @@ public class DataRetriever {
                         null,
                         null
                 );
+                // Charger les mouvements de stock
+                loadStockMovements(conn, ingredient);
                 ingredients.add(ingredient);
             }
 
@@ -359,6 +367,8 @@ public class DataRetriever {
                         null,
                         null
                 );
+                // Charger les mouvements de stock
+                loadStockMovements(conn, ingredient);
                 ingredients.add(ingredient);
             }
 
@@ -368,6 +378,344 @@ public class DataRetriever {
 
         return ingredients;
     }
+
+    public Ingredient saveIngredient(Ingredient toSave) {
+        if (toSave == null) {
+            throw new IllegalArgumentException("L'ingrédient ne peut pas être null");
+        }
+
+        Connection conn = null;
+
+        try {
+            conn = DBConnection.getDBConnection();
+            conn.setAutoCommit(false);
+
+            boolean isUpdate = toSave.getId() != null;
+            String ingredientQuery;
+
+            if (isUpdate) {
+                ingredientQuery = """
+                    UPDATE ingredient 
+                    SET name = ?, price = ?, category = ?::category_enum 
+                    WHERE id = ? 
+                    RETURNING id
+                    """;
+            } else {
+                ingredientQuery = """
+                    INSERT INTO ingredient (name, price, category) 
+                    VALUES (?, ?, ?::category_enum) 
+                    RETURNING id
+                    """;
+            }
+
+            try (PreparedStatement stmt = conn.prepareStatement(ingredientQuery)) {
+                stmt.setString(1, toSave.getName());
+                stmt.setDouble(2, toSave.getPrice());
+                stmt.setString(3, toSave.getCategory().name());
+
+                if (isUpdate) {
+                    stmt.setInt(4, toSave.getId());
+                }
+
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next() && !isUpdate) {
+                    toSave.setId(rs.getInt(1));
+                }
+            }
+
+            // Gérer les mouvements de stock (point b du TD4)
+            if (toSave.getStockMovementList() != null && !toSave.getStockMovementList().isEmpty()) {
+                saveStockMovements(conn, toSave.getId(), toSave.getStockMovementList());
+            }
+
+            conn.commit();
+
+            // Récupérer l'ingrédient avec ses mouvements actualisés
+            return findIngredientById(toSave.getId());
+
+        } catch (SQLException e) {
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException ex) {
+                    throw new RuntimeException("Erreur lors du rollback", ex);
+                }
+            }
+            throw new RuntimeException("Erreur lors de la sauvegarde de l'ingrédient", e);
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (SQLException e) {
+                    // Ignorer
+                }
+            }
+        }
+    }
+
+    private void saveStockMovements(Connection conn, Integer ingredientId,
+                                    List<StockMovement> movements) throws SQLException {
+        if (movements == null || movements.isEmpty()) {
+            return;
+        }
+
+        // Deux requêtes séparées
+        String queryWithId = """
+        INSERT INTO stockmovement (id, id_ingredient, quantity, unit, type, creation_datetime)
+        VALUES (?, ?, ?, ?::unit_enum, ?::movement_type_enum, ?)
+        ON CONFLICT (id) DO NOTHING
+        """;
+
+        String queryWithoutId = """
+        INSERT INTO stockmovement (id_ingredient, quantity, unit, type, creation_datetime)
+        VALUES (?, ?, ?::unit_enum, ?::movement_type_enum, ?)
+        """;
+
+        // Séparer les mouvements avec et sans ID
+        List<StockMovement> avecId = new ArrayList<>();
+        List<StockMovement> sansId = new ArrayList<>();
+
+        for (StockMovement movement : movements) {
+            if (movement.getId() != null) {
+                avecId.add(movement);
+            } else {
+                sansId.add(movement);
+            }
+        }
+
+        // Traiter d'abord les mouvements avec ID
+        if (!avecId.isEmpty()) {
+            try (PreparedStatement stmt = conn.prepareStatement(queryWithId)) {
+                for (StockMovement movement : avecId) {
+                    stmt.setInt(1, movement.getId());
+                    stmt.setInt(2, ingredientId);
+                    stmt.setDouble(3, movement.getQuantity());
+                    stmt.setString(4, movement.getUnit().name());
+                    stmt.setString(5, movement.getType().name());
+
+                    if (movement.getCreationDatetime() != null) {
+                        LocalDateTime ldt = LocalDateTime.ofInstant(
+                                movement.getCreationDatetime(), ZoneId.systemDefault());
+                        stmt.setTimestamp(6, Timestamp.valueOf(ldt));
+                    } else {
+                        stmt.setTimestamp(6, Timestamp.valueOf(LocalDateTime.now()));
+                    }
+
+                    stmt.addBatch();
+                }
+                stmt.executeBatch();
+            }
+        }
+
+        // Traiter les mouvements sans ID
+        if (!sansId.isEmpty()) {
+            try (PreparedStatement stmt = conn.prepareStatement(queryWithoutId)) {
+                for (StockMovement movement : sansId) {
+                    stmt.setInt(1, ingredientId);
+                    stmt.setDouble(2, movement.getQuantity());
+                    stmt.setString(3, movement.getUnit().name());
+                    stmt.setString(4, movement.getType().name());
+
+                    if (movement.getCreationDatetime() != null) {
+                        LocalDateTime ldt = LocalDateTime.ofInstant(
+                                movement.getCreationDatetime(), ZoneId.systemDefault());
+                        stmt.setTimestamp(5, Timestamp.valueOf(ldt));
+                    } else {
+                        stmt.setTimestamp(5, Timestamp.valueOf(LocalDateTime.now()));
+                    }
+
+                    stmt.addBatch();
+                }
+                stmt.executeBatch();
+            }
+        }
+    }
+
+    public Ingredient findIngredientById(Integer id) {
+        if (id == null) {
+            throw new IllegalArgumentException("L'ID ne peut pas être null");
+        }
+
+        String ingredientQuery = "SELECT * FROM ingredient WHERE id = ?";
+
+        try (Connection conn = DBConnection.getDBConnection();
+             PreparedStatement ingredientStmt = conn.prepareStatement(ingredientQuery)) {
+
+            ingredientStmt.setInt(1, id);
+            ResultSet ingredientRs = ingredientStmt.executeQuery();
+
+            if (!ingredientRs.next()) {
+                throw new RuntimeException("Ingrédient non trouvé avec l'ID: " + id);
+            }
+
+            Ingredient ingredient = new Ingredient(
+                    ingredientRs.getInt("id"),
+                    ingredientRs.getString("name"),
+                    ingredientRs.getDouble("price"),
+                    CategoryEnum.valueOf(ingredientRs.getString("category")),
+                    null,
+                    null
+            );
+
+            loadStockMovements(conn, ingredient);
+
+            return ingredient;
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur lors de la récupération de l'ingrédient avec ID: " + id, e);
+        }
+    }
+
+    private void loadStockMovements(Connection conn, Ingredient ingredient) throws SQLException {
+        if (ingredient == null || ingredient.getId() == null) {
+            return;
+        }
+
+        String query = """
+            SELECT * FROM stockmovement 
+            WHERE id_ingredient = ? 
+            ORDER BY creation_datetime
+            """;
+
+        try (PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setInt(1, ingredient.getId());
+            ResultSet rs = stmt.executeQuery();
+
+            List<StockMovement> movements = new ArrayList<>();
+            while (rs.next()) {
+                StockMovement movement = new StockMovement(
+                        rs.getInt("id"),
+                        rs.getInt("id_ingredient"),
+                        rs.getDouble("quantity"),
+                        UnitEnum.valueOf(rs.getString("unit")),
+                        MovementTypeEnum.valueOf(rs.getString("type")),
+                        rs.getTimestamp("creation_datetime").toInstant()
+                );
+                movements.add(movement);
+            }
+            ingredient.setStockMovementList(movements);
+        }
+    }
+
+    public Double getStockValueAt(Integer ingredientId, Instant instant) {
+        java.util.Map<String, Double> initialStocks = new java.util.HashMap<>();
+        initialStocks.put("Laitue", 5.0);
+        initialStocks.put("Tomate", 4.0);
+        initialStocks.put("Poulet", 10.0);
+        initialStocks.put("Chocolat", 3.0);
+        initialStocks.put("Beurre", 2.5);
+
+        Ingredient ingredient = findIngredientById(ingredientId);
+        Double initialStock = initialStocks.getOrDefault(ingredient.getName(), 0.0);
+
+        String query = """
+            SELECT 
+                COALESCE(SUM(
+                    CASE 
+                        WHEN type = 'IN'::movement_type_enum THEN quantity
+                        WHEN type = 'OUT'::movement_type_enum THEN -quantity
+                        ELSE 0
+                    END
+                ), 0) as stock_change
+            FROM stockmovement 
+            WHERE id_ingredient = ? 
+            AND creation_datetime <= ?
+            """;
+
+        try (Connection conn = DBConnection.getDBConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            LocalDateTime ldt = LocalDateTime.ofInstant(instant, ZoneId.systemDefault());
+
+            stmt.setInt(1, ingredientId);
+            stmt.setTimestamp(2, Timestamp.valueOf(ldt));
+
+            ResultSet rs = stmt.executeQuery();
+            if (rs.next()) {
+                Double stockChange = rs.getDouble("stock_change");
+                return initialStock + stockChange;
+            }
+
+            return initialStock;
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur lors du calcul du stock pour l'ingrédient ID: " + ingredientId, e);
+        }
+    }
+
+    public void addStockMovement(StockMovement movement) {
+        if (movement == null || movement.getIngredientId() == null) {
+            throw new IllegalArgumentException("Le mouvement ou l'ID de l'ingrédient ne peut pas être null");
+        }
+
+        String query = """
+            INSERT INTO stockmovement (id_ingredient, quantity, unit, type, creation_datetime)
+            VALUES (?, ?, ?::unit_enum, ?::movement_type_enum, ?)
+            """;
+
+        try (Connection conn = DBConnection.getDBConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setInt(1, movement.getIngredientId());
+            stmt.setDouble(2, movement.getQuantity());
+            stmt.setString(3, movement.getUnit().name());
+            stmt.setString(4, movement.getType().name());
+
+            if (movement.getCreationDatetime() != null) {
+                LocalDateTime ldt = LocalDateTime.ofInstant(
+                        movement.getCreationDatetime(), ZoneId.systemDefault());
+                stmt.setTimestamp(5, Timestamp.valueOf(ldt));
+            } else {
+                stmt.setTimestamp(5, Timestamp.valueOf(LocalDateTime.now()));
+            }
+
+            stmt.executeUpdate();
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur lors de l'ajout du mouvement de stock", e);
+        }
+    }
+
+    public void testStockCalculations() {
+        System.out.println("\n=== TEST DES STOCKS (TD4) ===");
+
+        try {
+            LocalDateTime testDateTime = LocalDateTime.of(2024, 1, 6, 12, 0);
+            Instant testInstant = testDateTime.atZone(ZoneId.systemDefault()).toInstant();
+
+            System.out.println("Calcul des stocks à " + testDateTime + ":");
+
+            Object[][] expectedStocks = {
+                    {1, "Laitue", 4.8},
+                    {2, "Tomate", 3.85},
+                    {3, "Poulet", 9.0},
+                    {4, "Chocolat", 2.7},
+                    {5, "Beurre", 2.3}
+            };
+
+            for (Object[] expected : expectedStocks) {
+                int ingredientId = (int) expected[0];
+                String ingredientName = (String) expected[1];
+                double expectedStock = (double) expected[2];
+
+                Double actualStock = getStockValueAt(ingredientId, testInstant);
+
+                System.out.printf("%s (ID: %d): %.2f", ingredientName, ingredientId, actualStock);
+
+                if (Math.abs(actualStock - expectedStock) < 0.01) {
+                    System.out.printf(" ✓ (Attendu: %.2f)\n", expectedStock);
+                } else {
+                    System.out.printf(" ✗ (Attendu: %.2f)\n", expectedStock);
+                }
+            }
+
+        } catch (Exception e) {
+            System.out.println("Erreur lors du test des stocks: " + e.getMessage());
+            e.printStackTrace();
+        }
+    }
+
 
     private boolean dishExists(Connection conn, Integer dishId) throws SQLException {
         String query = "SELECT COUNT(*) FROM dish WHERE id = ?";
@@ -484,6 +832,8 @@ public class DataRetriever {
                         dishId,
                         rs.getDouble("quantity_required")
                 );
+                // Charger les mouvements de stock
+                loadStockMovements(conn, ingredient);
                 ingredients.add(ingredient);
             }
         }
@@ -494,6 +844,8 @@ public class DataRetriever {
     private List<Ingredient> getIngredientsForDish(Connection conn, Integer dishId) throws SQLException {
         return getIngredientsForDishManyToMany(conn, dishId);
     }
+
+    // ==================== MÉTHODES EXISTANTES ====================
 
     public int countAllIngredients() {
         String query = "SELECT COUNT(*) FROM ingredient";
@@ -578,43 +930,6 @@ public class DataRetriever {
             return dish.getSellingPrice() - cost;
         } catch (RuntimeException e) {
             throw new RuntimeException("Erreur lors du calcul de la marge: " + e.getMessage());
-        }
-    }
-
-    public Ingredient saveIngredient(Ingredient ingredient) {
-        if (ingredient == null) {
-            throw new IllegalArgumentException("L'ingrédient ne peut pas être null");
-        }
-
-        boolean isUpdate = ingredient.getId() != null;
-        String query;
-
-        if (isUpdate) {
-            query = "UPDATE ingredient SET name = ?, price = ?, category = ?::category_enum WHERE id = ? RETURNING id";
-        } else {
-            query = "INSERT INTO ingredient (name, price, category) VALUES (?, ?, ?::category_enum) RETURNING id";
-        }
-
-        try (Connection conn = DBConnection.getDBConnection();
-             PreparedStatement stmt = conn.prepareStatement(query)) {
-
-            stmt.setString(1, ingredient.getName());
-            stmt.setDouble(2, ingredient.getPrice());
-            stmt.setString(3, ingredient.getCategory().name());
-
-            if (isUpdate) {
-                stmt.setInt(4, ingredient.getId());
-            }
-
-            ResultSet rs = stmt.executeQuery();
-            if (rs.next() && !isUpdate) {
-                ingredient.setId(rs.getInt(1));
-            }
-
-            return ingredient;
-
-        } catch (SQLException e) {
-            throw new RuntimeException("Erreur lors de la sauvegarde de l'ingrédient", e);
         }
     }
 

@@ -1,116 +1,185 @@
 package restaurant;
 
 import restaurant.database.DataRetriever;
-import restaurant.models.Dish;
 import restaurant.models.Ingredient;
+import restaurant.models.StockMovement;
 import restaurant.enums.CategoryEnum;
+import restaurant.enums.MovementTypeEnum;
+import restaurant.enums.UnitEnum;
+
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneId;
 
 public class Main {
     public static void main(String[] args) {
+        System.out.println("=== TEST EXCLUSIF TD4 - GESTION DES STOCKS ===");
+
         DataRetriever retriever = new DataRetriever();
 
-        // Test 1: Vérification des coûts des plats
-        System.out.println("1. Couts des plats:");
+        // Test 1: Récupération d'un ingrédient avec ses mouvements
+        System.out.println("1. TEST DE RÉCUPÉRATION D'INGRÉDIENT AVEC MOUVEMENTS:");
+        testRecuperationIngredient(retriever);
 
-        testDishCost(retriever, 1, "Salade fraîche", 250.0);
-        testDishCost(retriever, 2, "Poulet grillé", 4500.0);
-        testDishCost(retriever, 3, "Riz aux légumes", 0.0);
-        testDishCost(retriever, 4, "Gâteau au chocolat", 1400.0);
-        testDishCost(retriever, 5, "Salade de fruits", 0.0);
+        // Test 2: Calcul des stocks à un instant donné
+        System.out.println("\n\n2. TEST CALCUL DES STOCKS À INSTANT T (TD4 point 3):");
+        testCalculStocksInstantT(retriever);
 
-        // Test 2: Vérification des marges brutes
-        System.out.println("\n\n2. Marges brutes:");
+        // Test 3: Méthode saveIngredient avec mouvements de stock
+        System.out.println("\n\n3. TEST saveIngredient AVEC MOUVEMENTS (TD4 point 2):");
+        testSaveIngredientAvecMouvements(retriever);
 
-        testGrossMargin(retriever, 1, "Salade fraîche", 3250.0);
-        testGrossMargin(retriever, 2, "Poulet grillé", 7500.0);
-        testGrossMarginException(retriever, 3, "Riz aux légumes");
-        testGrossMargin(retriever, 4, "Gâteau au chocolat", 6600.0);
-        testGrossMarginException(retriever, 5, "Salade de fruits");
-
-        // Test 3: Test de réutilisation d'ingrédients
-        System.out.println("\n\n3. Test de réutilisation d'ingrédients:");
-        testReutilisationIngredients(retriever);
     }
 
-    private static void testDishCost(DataRetriever retriever, int dishId,
-                                     String dishName, double expectedCost) {
+    private static void testRecuperationIngredient(DataRetriever retriever) {
         try {
-            Dish dish = retriever.findDishById(dishId);
-            Double cost = dish.getDishCost();
+            System.out.println("Test de récupération de l'ingrédient 'Laitue' (ID: 1)...");
 
-            System.out.printf("%s: %.2f Ar", dishName, cost);
+            Ingredient laitue = retriever.findIngredientById(1);
 
-            if (Math.abs(cost - expectedCost) < 0.01) {
-                System.out.println("(CORRECT)");
-            } else {
-                System.out.printf("(ATTENDU: %.2f Ar)\n", expectedCost);
+            System.out.println("✓ Ingrédient récupéré: " + laitue.getName());
+            System.out.println("  - Prix: " + laitue.getPrice() + " Ar");
+            System.out.println("  - Catégorie: " + laitue.getCategory());
+            System.out.println("  - Nombre de mouvements: " + laitue.getStockMovementList().size());
+
+            if (!laitue.getStockMovementList().isEmpty()) {
+                System.out.println("  - Détail des mouvements:");
+                for (StockMovement mvt : laitue.getStockMovementList()) {
+                    System.out.println("    * " + mvt.getType() + " " +
+                            mvt.getQuantity() + " " + mvt.getUnit() +
+                            " le " + mvt.getCreationDatetime());
+                }
             }
 
         } catch (Exception e) {
-            System.out.printf("%s: Erreur - %s\n", dishName, e.getMessage());
+            System.out.println("✗ Erreur: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 
-    private static void testGrossMargin(DataRetriever retriever, int dishId,
-                                        String dishName, double expectedMargin) {
+    private static void testCalculStocksInstantT(DataRetriever retriever) {
         try {
-            Dish dish = retriever.findDishById(dishId);
-            Double margin = dish.getGrossMargin();
+            System.out.println("Test des calculs de stock selon le TD4 (point 3)...");
 
-            System.out.printf("%s: %.2f Ar", dishName, margin);
+            LocalDateTime testDateTime = LocalDateTime.of(2024, 1, 6, 12, 0);
+            Instant testInstant = testDateTime.atZone(ZoneId.systemDefault()).toInstant();
 
-            if (Math.abs(margin - expectedMargin) < 0.01) {
-                System.out.println(" ✓ (CORRECT)");
-            } else {
-                System.out.printf(" ✗ (ATTENDU: %.2f Ar)\n", expectedMargin);
+            System.out.println("Calcul des stocks à " + testDateTime + ":");
+
+            Object[][] expectedStocks = {
+                    {1, "Laitue", 4.8},
+                    {2, "Tomate", 3.85},
+                    {3, "Poulet", 9.0},
+                    {4, "Chocolat", 2.7},
+                    {5, "Beurre", 2.3}
+            };
+
+            int testsReussis = 0;
+
+            for (Object[] expected : expectedStocks) {
+                int ingredientId = (int) expected[0];
+                String ingredientName = (String) expected[1];
+                double expectedStock = (double) expected[2];
+
+                try {
+                    Double actualStock = retriever.getStockValueAt(ingredientId, testInstant);
+
+                    System.out.printf("  %s (ID: %d): %.2f", ingredientName, ingredientId, actualStock);
+
+                    if (Math.abs(actualStock - expectedStock) < 0.01) {
+                        System.out.printf(" ✓ (Attendu: %.2f)\n", expectedStock);
+                        testsReussis++;
+                    } else {
+                        System.out.printf(" ✗ (Attendu: %.2f)\n", expectedStock);
+                    }
+
+                } catch (Exception e) {
+                    System.out.printf("  %s (ID: %d): Erreur - %s\n",
+                            ingredientName, ingredientId, e.getMessage());
+                }
             }
+
+            System.out.printf("\nRésumé: %d/%d tests réussis\n", testsReussis, expectedStocks.length);
 
         } catch (Exception e) {
-            System.out.printf("%s: Erreur - %s\n", dishName, e.getMessage());
+            System.out.println("Erreur lors du test des calculs de stock: " + e.getMessage());
         }
     }
 
-    private static void testGrossMarginException(DataRetriever retriever,
-                                                 int dishId, String dishName) {
+    private static void testSaveIngredientAvecMouvements(DataRetriever retriever) {
         try {
-            Dish dish = retriever.findDishById(dishId);
-            dish.getGrossMargin();
-            System.out.printf("%s: (Devrait lever une exception pour prix NULL)\n", dishName);
-        } catch (RuntimeException e) {
-            if (e.getMessage().contains("Prix de vente") || e.getMessage().contains("NULL")) {
-                System.out.printf("%s: Exception correctement levée: %s\n",
-                        dishName, e.getMessage());
+            System.out.println("Test de saveIngredient avec ajout de mouvements...");
+
+            // 1. Créer un nouvel ingrédient avec nom UNIQUE
+            String timestamp = String.valueOf(System.currentTimeMillis());
+            String nomUnique = "Sucre_" + timestamp.substring(timestamp.length() - 4);
+
+            Ingredient nouvelIngredient = new Ingredient();
+            nouvelIngredient.setName(nomUnique);
+            nouvelIngredient.setPrice(1200.0);
+            nouvelIngredient.setCategory(CategoryEnum.OTHER);
+
+            // 2. Ajouter des mouvements de stock
+            StockMovement entreeInitiale = new StockMovement();
+            entreeInitiale.setQuantity(50.0);
+            entreeInitiale.setUnit(UnitEnum.KG);
+            entreeInitiale.setType(MovementTypeEnum.IN);
+            entreeInitiale.setCreationDatetime(Instant.now().minusSeconds(86400 * 7));
+
+            StockMovement sortie = new StockMovement();
+            sortie.setQuantity(12.5);
+            sortie.setUnit(UnitEnum.KG);
+            sortie.setType(MovementTypeEnum.OUT);
+            sortie.setCreationDatetime(Instant.now().minusSeconds(86400 * 2));
+
+            nouvelIngredient.getStockMovementList().add(entreeInitiale);
+            nouvelIngredient.getStockMovementList().add(sortie);
+
+            // 3. Sauvegarder
+            System.out.println("Sauvegarde de l'ingrédient avec 2 mouvements...");
+            Ingredient saved = retriever.saveIngredient(nouvelIngredient);
+
+            System.out.println("✓ Ingrédient créé: " + saved.getName() + " (ID: " + saved.getId() + ")");
+            System.out.println("  Nombre de mouvements sauvegardés: " + saved.getStockMovementList().size());
+
+            // 4. Test "on conflict do nothing" avec un ID existant
+            System.out.println("\nTest 'on conflict do nothing' avec ID existant...");
+            StockMovement mvtAvecIdExistant = new StockMovement();
+            mvtAvecIdExistant.setId(6);
+            mvtAvecIdExistant.setQuantity(0.5);
+            mvtAvecIdExistant.setUnit(UnitEnum.KG);
+            mvtAvecIdExistant.setType(MovementTypeEnum.OUT);
+            mvtAvecIdExistant.setCreationDatetime(Instant.now());
+
+            saved.getStockMovementList().add(mvtAvecIdExistant);
+            int nbMouvementsAvant = saved.getStockMovementList().size();
+
+            saved = retriever.saveIngredient(saved);
+            int nbMouvementsApres = saved.getStockMovementList().size();
+
+            if (nbMouvementsApres == nbMouvementsAvant - 1) {
+                System.out.println("✓ 'On conflict do nothing' fonctionne: mouvement avec ID existant ignoré");
             } else {
-                System.out.printf("%s: Mauvaise exception: %s\n",
-                        dishName, e.getMessage());
+                System.out.println("✗ Problème avec 'on conflict do nothing'");
             }
-        }
-    }
 
-    private static void testReutilisationIngredients(DataRetriever retriever) {
-        try {
-            Ingredient tomate = new Ingredient();
-            tomate.setName("Tomate Cherry");
-            tomate.setPrice(800.0);
-            tomate.setCategory(CategoryEnum.VEGETABLE);
-
-            Ingredient savedTomate = retriever.saveIngredient(tomate);
-            System.out.println("✓ Ingrédient unique créé: " + savedTomate.getName());
+            // 5. Test transaction atomique simple
+            System.out.println("\nTest transaction atomique simple...");
+            Ingredient ingredientInvalide = new Ingredient();
+            ingredientInvalide.setName(null); // Nom null devrait faire échouer
+            ingredientInvalide.setPrice(100.0);
+            ingredientInvalide.setCategory(CategoryEnum.OTHER);
 
             try {
-                Ingredient tomate2 = new Ingredient();
-                tomate2.setName("Tomate Cherry");
-                tomate2.setPrice(900.0);
-                tomate2.setCategory(CategoryEnum.VEGETABLE);
-
-                retriever.saveIngredient(tomate2);
-                System.out.println("✗ Doublon créé (PROBLÈME)");
+                retriever.saveIngredient(ingredientInvalide);
+                System.out.println("✗ Transaction a réussi alors qu'elle devrait échouer");
             } catch (Exception e) {
-                System.out.println("✓ Doublon correctement rejeté");
+                System.out.println("✓ Transaction correctement échouée: " + e.getMessage());
             }
 
         } catch (Exception e) {
-            System.out.println("Erreur lors du test de réutilisation: " + e.getMessage());
+            System.out.println("✗ Erreur: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }
