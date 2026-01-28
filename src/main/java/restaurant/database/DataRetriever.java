@@ -106,7 +106,6 @@ public class DataRetriever {
                         null,
                         null
                 );
-                // Charger les mouvements de stock
                 loadStockMovements(conn, ingredient);
                 ingredients.add(ingredient);
             }
@@ -367,7 +366,6 @@ public class DataRetriever {
                         null,
                         null
                 );
-                // Charger les mouvements de stock
                 loadStockMovements(conn, ingredient);
                 ingredients.add(ingredient);
             }
@@ -423,14 +421,12 @@ public class DataRetriever {
                 }
             }
 
-            // Gérer les mouvements de stock (point b du TD4)
             if (toSave.getStockMovementList() != null && !toSave.getStockMovementList().isEmpty()) {
                 saveStockMovements(conn, toSave.getId(), toSave.getStockMovementList());
             }
 
             conn.commit();
 
-            // Récupérer l'ingrédient avec ses mouvements actualisés
             return findIngredientById(toSave.getId());
 
         } catch (SQLException e) {
@@ -460,7 +456,6 @@ public class DataRetriever {
             return;
         }
 
-        // Deux requêtes séparées
         String queryWithId = """
         INSERT INTO stockmovement (id, id_ingredient, quantity, unit, type, creation_datetime)
         VALUES (?, ?, ?, ?::unit_enum, ?::movement_type_enum, ?)
@@ -472,7 +467,6 @@ public class DataRetriever {
         VALUES (?, ?, ?::unit_enum, ?::movement_type_enum, ?)
         """;
 
-        // Séparer les mouvements avec et sans ID
         List<StockMovement> avecId = new ArrayList<>();
         List<StockMovement> sansId = new ArrayList<>();
 
@@ -484,7 +478,6 @@ public class DataRetriever {
             }
         }
 
-        // Traiter d'abord les mouvements avec ID
         if (!avecId.isEmpty()) {
             try (PreparedStatement stmt = conn.prepareStatement(queryWithId)) {
                 for (StockMovement movement : avecId) {
@@ -508,7 +501,6 @@ public class DataRetriever {
             }
         }
 
-        // Traiter les mouvements sans ID
         if (!sansId.isEmpty()) {
             try (PreparedStatement stmt = conn.prepareStatement(queryWithoutId)) {
                 for (StockMovement movement : sansId) {
@@ -832,7 +824,6 @@ public class DataRetriever {
                         dishId,
                         rs.getDouble("quantity_required")
                 );
-                // Charger les mouvements de stock
                 loadStockMovements(conn, ingredient);
                 ingredients.add(ingredient);
             }
@@ -845,7 +836,6 @@ public class DataRetriever {
         return getIngredientsForDishManyToMany(conn, dishId);
     }
 
-    // ==================== MÉTHODES EXISTANTES ====================
 
     public int countAllIngredients() {
         String query = "SELECT COUNT(*) FROM ingredient";
