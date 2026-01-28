@@ -7,6 +7,7 @@ import restaurant.enums.CategoryEnum;
 import restaurant.enums.DishTypeEnum;
 import restaurant.enums.MovementTypeEnum;
 import restaurant.enums.UnitEnum;
+import restaurant.utils.UnitConverter;
 
 import java.sql.*;
 import java.time.Instant;
@@ -602,18 +603,13 @@ public class DataRetriever {
         Double initialStock = initialStocks.getOrDefault(ingredient.getName(), 0.0);
 
         String query = """
-            SELECT 
-                COALESCE(SUM(
-                    CASE 
-                        WHEN type = 'IN'::movement_type_enum THEN quantity
-                        WHEN type = 'OUT'::movement_type_enum THEN -quantity
-                        ELSE 0
-                    END
-                ), 0) as stock_change
-            FROM stockmovement 
-            WHERE id_ingredient = ? 
-            AND creation_datetime <= ?
-            """;
+        SELECT 
+            id, id_ingredient, quantity, unit, type, creation_datetime
+        FROM stockmovement 
+        WHERE id_ingredient = ? 
+        AND creation_datetime <= ?
+        ORDER BY creation_datetime
+        """;
 
         try (Connection conn = DBConnection.getDBConnection();
              PreparedStatement stmt = conn.prepareStatement(query)) {
@@ -624,12 +620,39 @@ public class DataRetriever {
             stmt.setTimestamp(2, Timestamp.valueOf(ldt));
 
             ResultSet rs = stmt.executeQuery();
-            if (rs.next()) {
-                Double stockChange = rs.getDouble("stock_change");
-                return initialStock + stockChange;
+
+            // Au lieu de faire une somme directe, on traite chaque mouvement
+            // pour appliquer les conversions d'unités
+            Double currentStock = initialStock;
+
+            while (rs.next()) {
+                Double quantity = rs.getDouble("quantity");
+                UnitEnum unit = UnitEnum.valueOf(rs.getString("unit"));
+                MovementTypeEnum type = MovementTypeEnum.valueOf(rs.getString("type"));
+
+                // Convertir en KG pour le calcul du stock
+                Double quantityInKg = UnitConverter.convertToKg(
+                        ingredient.getName(),
+                        quantity,
+                        unit
+                );
+
+                if (quantityInKg == null) {
+                    // Si la conversion n'est pas possible, on ignore le mouvement
+                    // ou on lève une exception selon votre politique
+                    System.err.println("Conversion impossible pour " + ingredient.getName() +
+                            " de " + unit + " vers KG. Mouvement ignoré.");
+                    continue;
+                }
+
+                if (type == MovementTypeEnum.IN) {
+                    currentStock += quantityInKg;
+                } else {
+                    currentStock -= quantityInKg;
+                }
             }
 
-            return initialStock;
+            return currentStock;
 
         } catch (SQLException e) {
             throw new RuntimeException("Erreur lors du calcul du stock pour l'ingrédient ID: " + ingredientId, e);
