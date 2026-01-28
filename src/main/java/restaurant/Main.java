@@ -13,7 +13,6 @@ import java.time.ZoneId;
 
 public class Main {
     public static void main(String[] args) {
-        System.out.println("=== TEST EXCLUSIF TD4 - GESTION DES STOCKS ===");
 
         DataRetriever retriever = new DataRetriever();
 
