@@ -1,12 +1,7 @@
 package restaurant.database;
 
-import restaurant.models.Dish;
-import restaurant.models.Ingredient;
-import restaurant.models.StockMovement;
-import restaurant.enums.CategoryEnum;
-import restaurant.enums.DishTypeEnum;
-import restaurant.enums.MovementTypeEnum;
-import restaurant.enums.UnitEnum;
+import restaurant.enums.*;
+import restaurant.models.*;
 import restaurant.utils.UnitConverter;
 
 import java.sql.*;
@@ -1018,4 +1013,259 @@ public class DataRetriever {
             }
         }
     }
+
+    public Order findOrderByReference(String reference) {
+        if (reference == null || reference.trim().isEmpty()) {
+            throw new IllegalArgumentException("La référence ne peut pas être vide");
+        }
+
+        String query = "SELECT * FROM \"order\" WHERE reference = ?";
+
+        try (Connection conn = DBConnection.getDBConnection();
+             PreparedStatement stmt = conn.prepareStatement(query)) {
+
+            stmt.setString(1, reference);
+            ResultSet rs = stmt.executeQuery();
+
+            if (!rs.next()) {
+                return null;
+            }
+
+            Order order = new Order(
+                    rs.getInt("id"),
+                    rs.getString("reference"),
+                    PaymentStatusEnum.valueOf(rs.getString("payment_status"))
+            );
+
+            Timestamp orderTimestamp = rs.getTimestamp("order_datetime");
+            if (orderTimestamp != null) {
+                order.setOrderDate(orderTimestamp.toInstant());
+            }
+
+            loadOrderDishes(conn, order);
+
+            return order;
+
+        } catch (SQLException e) {
+            throw new RuntimeException("Erreur lors de la récupération de la commande", e);
+        }
+    }
+
+    public Order saveOrder(Order orderToSave) {
+        if (orderToSave == null) {
+            throw new IllegalArgumentException("La commande ne peut pas être null");
+        }
+
+        if (orderToSave.getPaymentStatus() == null) {
+            throw new IllegalArgumentException("Le statut de paiement ne peut pas être null");
+        }
+
+        Connection conn = null;
+
+        try {
+            conn = DBConnection.getDBConnection();
+            conn.setAutoCommit(false);
+
+            Order existingOrder = null;
+            if (orderToSave.getReference() != null) {
+                existingOrder = findOrderByReference(orderToSave.getReference());
+            }
+
+            if (existingOrder != null && existingOrder.getPaymentStatus() == PaymentStatusEnum.PAID) {
+                throw new IllegalStateException("La commande a déjà été payée et ne peut plus être modifiée");
+            }
+
+            String orderQuery;
+            boolean isUpdate = (existingOrder != null);
+
+            if (isUpdate) {
+                orderQuery = """
+                UPDATE "order" 
+                SET payment_status = ?::payment_status_enum 
+                WHERE reference = ?
+                RETURNING id
+                """;
+            } else {
+                orderQuery = """
+                INSERT INTO "order" (reference, payment_status) 
+                VALUES (?, ?::payment_status_enum) 
+                RETURNING id
+                """;
+            }
+
+            try (PreparedStatement stmt = conn.prepareStatement(orderQuery)) {
+                if (isUpdate) {
+                    stmt.setString(1, orderToSave.getPaymentStatus().name());
+                    stmt.setString(2, orderToSave.getReference());
+                } else {
+                    stmt.setString(1, orderToSave.getReference());
+                    stmt.setString(2, orderToSave.getPaymentStatus().name());
+                }
+
+                ResultSet rs = stmt.executeQuery();
+                if (rs.next()) {
+                    if (!isUpdate) {
+                        orderToSave.setId(rs.getInt(1));
+                    }
+                }
+            }
+
+            if (isUpdate) {
+                String deleteQuery = "DELETE FROM order_dish WHERE order_id = ?";
+                try (PreparedStatement stmt = conn.prepareStatement(deleteQuery)) {
+                    stmt.setInt(1, orderToSave.getId());
+                    stmt.executeUpdate();
+                }
+            }
+
+            if (orderToSave.getDishes() != null && !orderToSave.getDishes().isEmpty()) {
+                String insertQuery = """
+                INSERT INTO order_dish (order_id, dish_id, quantity) 
+                VALUES (?, ?, ?)
+                """;
+
+                try (PreparedStatement stmt = conn.prepareStatement(insertQuery)) {
+                    for (Dish dish : orderToSave.getDishes()) {
+                        stmt.setInt(1, orderToSave.getId());
+                        stmt.setInt(2, dish.getId());
+                        stmt.setInt(3, 1); // Par défaut, quantité = 1
+                        stmt.addBatch();
+                    }
+                    stmt.executeBatch();
+                }
+            }
+
+            conn.commit();
+            return orderToSave;
+
+        } catch (SQLException e) {
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException ex) {
+                    throw new RuntimeException("Erreur lors du rollback", ex);
+                }
+            }
+            throw new RuntimeException("Erreur lors de la sauvegarde de la commande", e);
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (SQLException e) {
+                    // Ignorer
+                }
+            }
+        }
+    }
+
+    private void loadOrderDishes(Connection conn, Order order) throws SQLException {
+        String query = """
+        SELECT d.*, od.quantity 
+        FROM dish d
+        JOIN order_dish od ON d.id = od.dish_id
+        WHERE od.order_id = ?
+        """;
+
+        try (PreparedStatement stmt = conn.prepareStatement(query)) {
+            stmt.setInt(1, order.getId());
+            ResultSet rs = stmt.executeQuery();
+
+            List<Dish> dishes = new ArrayList<>();
+            while (rs.next()) {
+                Dish dish = new Dish(
+                        rs.getInt("id"),
+                        rs.getString("name"),
+                        DishTypeEnum.valueOf(rs.getString("dish_type"))
+                );
+
+                Object sellingPrice = rs.getObject("selling_price");
+                if (sellingPrice != null) {
+                    dish.setSellingPrice(rs.getDouble("selling_price"));
+                }
+
+                List<Ingredient> ingredients = getIngredientsForDishManyToMany(conn, dish.getId());
+                dish.setIngredients(ingredients);
+
+                dishes.add(dish);
+            }
+
+            order.setDishes(dishes);
+        }
+    }
+
+    public Sale createSaleFrom(Order order) {
+        if (order == null) {
+            throw new IllegalArgumentException("La commande ne peut pas être null");
+        }
+
+        if (order.getPaymentStatus() != PaymentStatusEnum.PAID) {
+            throw new IllegalStateException("Une vente ne peut être créée que pour une commande payée");
+        }
+
+        Connection conn = null;
+
+        try {
+            conn = DBConnection.getDBConnection();
+            conn.setAutoCommit(false);
+
+            String checkQuery = "SELECT id FROM sale WHERE order_id = ?";
+            try (PreparedStatement stmt = conn.prepareStatement(checkQuery)) {
+                stmt.setInt(1, order.getId());
+                ResultSet rs = stmt.executeQuery();
+
+                if (rs.next()) {
+                    throw new IllegalStateException("Une commande ne peut être associée qu'à une vente");
+                }
+            }
+
+            String saleQuery = """
+            INSERT INTO sale (order_id) 
+            VALUES (?) 
+            RETURNING id, sale_datetime
+            """;
+
+            Sale sale = null;
+
+            try (PreparedStatement stmt = conn.prepareStatement(saleQuery)) {
+                stmt.setInt(1, order.getId());
+                ResultSet rs = stmt.executeQuery();
+
+                if (rs.next()) {
+                    sale = new Sale();
+                    sale.setId(rs.getInt("id"));
+                    sale.setOrderId(order.getId());
+
+                    Timestamp saleTimestamp = rs.getTimestamp("sale_datetime");
+                    if (saleTimestamp != null) {
+                        sale.setSaleDatetime(saleTimestamp.toInstant());
+                    }
+                }
+            }
+
+            conn.commit();
+            return sale;
+
+        } catch (SQLException e) {
+            if (conn != null) {
+                try {
+                    conn.rollback();
+                } catch (SQLException ex) {
+                    throw new RuntimeException("Erreur lors du rollback", ex);
+                }
+            }
+            throw new RuntimeException("Erreur lors de la création de la vente", e);
+        } finally {
+            if (conn != null) {
+                try {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                } catch (SQLException e) {
+                    // Ignorer
+                }
+            }
+        }
+    }
+
+
 }

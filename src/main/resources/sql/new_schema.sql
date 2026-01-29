@@ -67,3 +67,47 @@ CREATE INDEX idx_dishingredient_ingredient ON DishIngredient(id_ingredient);
 CREATE INDEX idx_dish_selling_price ON Dish(selling_price);
 CREATE INDEX idx_stockmovement_ingredient ON stockmovement(id_ingredient);
 CREATE INDEX idx_stockmovement_datetime ON stockmovement(creation_datetime);
+
+-- Enum pour le statut de paiement
+CREATE TYPE payment_status_enum AS ENUM ('UNPAID', 'PAID');
+
+-- Table des commandes
+CREATE TABLE "order" (
+                         id SERIAL PRIMARY KEY,
+                         reference VARCHAR(255) NOT NULL UNIQUE,
+                         payment_status payment_status_enum NOT NULL DEFAULT 'UNPAID',
+                         order_datetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Table des ventes
+CREATE TABLE sale (
+                      id SERIAL PRIMARY KEY,
+                      order_id INT NOT NULL UNIQUE,
+                      sale_datetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+
+                      CONSTRAINT fk_order
+                          FOREIGN KEY (order_id)
+                              REFERENCES "order"(id)
+                              ON DELETE CASCADE
+);
+
+-- Table de liaison entre commande et plats
+CREATE TABLE order_dish (
+                            id SERIAL PRIMARY KEY,
+                            order_id INT NOT NULL,
+                            dish_id INT NOT NULL,
+                            quantity INT NOT NULL DEFAULT 1,
+
+                            CONSTRAINT fk_order_dish_order
+                                FOREIGN KEY (order_id)
+                                    REFERENCES "order"(id)
+                                    ON DELETE CASCADE,
+
+                            CONSTRAINT fk_order_dish_dish
+                                FOREIGN KEY (dish_id)
+                                    REFERENCES dish(id)
+                                    ON DELETE CASCADE,
+
+                            CONSTRAINT unique_order_dish
+                                UNIQUE (order_id, dish_id)
+);

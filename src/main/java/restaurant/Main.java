@@ -3,43 +3,44 @@ package restaurant;
 import restaurant.database.DataRetriever;
 import restaurant.models.Ingredient;
 import restaurant.models.StockMovement;
+import restaurant.models.Order;
+import restaurant.models.Sale;
 import restaurant.enums.CategoryEnum;
 import restaurant.enums.MovementTypeEnum;
+import restaurant.enums.PaymentStatusEnum;
 import restaurant.enums.UnitEnum;
 import restaurant.utils.UnitConverter;
 
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
+import java.util.UUID;
 
 public class Main {
     public static void main(String[] args) {
 
         DataRetriever retriever = new DataRetriever();
 
-        // Test 1: Récupération d'un ingrédient avec ses mouvements
         System.out.println("1. TEST DE RÉCUPÉRATION D'INGRÉDIENT AVEC MOUVEMENTS:");
         testRecuperationIngredient(retriever);
 
-        // Test 2: Calcul des stocks à un instant donné
         System.out.println("\n\n2. TEST CALCUL DES STOCKS À INSTANT T (TD4 point 3):");
         testCalculStocksInstantT(retriever);
 
-        // Test 3: Méthode saveIngredient avec mouvements de stock
         System.out.println("\n\n3. TEST saveIngredient AVEC MOUVEMENTS (TD4 point 2):");
         testSaveIngredientAvecMouvements(retriever);
 
-        // Test 4: Conversions d'unités (Bonus K1)
         System.out.println("\n\n4. TEST DES CONVERSIONS D'UNITÉS (BONUS K1):");
         testConversionsUnites();
 
-        // Test 5: Calcul des stocks avec conversions (Test du bonus)
         System.out.println("\n\n5. TEST DES CALCULS DE STOCK AVEC CONVERSIONS:");
         testCalculStocksAvecConversions(retriever);
 
-        // Test 6: Intégration avec les mouvements du bonus
         System.out.println("\n\n6. TEST DES MOUVEMENTS DU BONUS:");
         testMouvementsBonus(retriever);
+
+        System.out.println("\n\n7. TEST DES COMMANDES ET VENTES (K2):");
+        testCommandesEtVentes(retriever);
     }
 
     private static void testRecuperationIngredient(DataRetriever retriever) {
@@ -121,7 +122,6 @@ public class Main {
         try {
             System.out.println("Test de saveIngredient avec ajout de mouvements...");
 
-            // 1. Créer un nouvel ingrédient avec nom UNIQUE
             String timestamp = String.valueOf(System.currentTimeMillis());
             String nomUnique = "Sucre_" + timestamp.substring(timestamp.length() - 4);
 
@@ -130,7 +130,6 @@ public class Main {
             nouvelIngredient.setPrice(1200.0);
             nouvelIngredient.setCategory(CategoryEnum.OTHER);
 
-            // 2. Ajouter des mouvements de stock
             StockMovement entreeInitiale = new StockMovement();
             entreeInitiale.setQuantity(50.0);
             entreeInitiale.setUnit(UnitEnum.KG);
@@ -146,14 +145,11 @@ public class Main {
             nouvelIngredient.getStockMovementList().add(entreeInitiale);
             nouvelIngredient.getStockMovementList().add(sortie);
 
-            // 3. Sauvegarder
             System.out.println("Sauvegarde de l'ingrédient avec 2 mouvements...");
             Ingredient saved = retriever.saveIngredient(nouvelIngredient);
 
             System.out.println("✓ Ingrédient créé: " + saved.getName() + " (ID: " + saved.getId() + ")");
             System.out.println("  Nombre de mouvements sauvegardés: " + saved.getStockMovementList().size());
-
-            // 4. Test "on conflict do nothing" avec un ID existant
             System.out.println("\nTest 'on conflict do nothing' avec ID existant...");
             StockMovement mvtAvecIdExistant = new StockMovement();
             mvtAvecIdExistant.setId(6);
@@ -174,10 +170,9 @@ public class Main {
                 System.out.println("✗ Problème avec 'on conflict do nothing'");
             }
 
-            // 5. Test transaction atomique simple
             System.out.println("\nTest transaction atomique simple...");
             Ingredient ingredientInvalide = new Ingredient();
-            ingredientInvalide.setName(null); // Nom null devrait faire échouer
+            ingredientInvalide.setName(null);
             ingredientInvalide.setPrice(100.0);
             ingredientInvalide.setCategory(CategoryEnum.OTHER);
 
@@ -197,7 +192,6 @@ public class Main {
     private static void testConversionsUnites() {
         System.out.println("=== TEST DES CONVERSIONS D'UNITÉS EN MÉMOIRE ===");
 
-        // Test 1: Tomate (10 PCS = 1 KG)
         System.out.println("\n1. Tomate:");
         System.out.println("   Conversion de PCS vers KG:");
         System.out.println("   10 PCS -> " + UnitConverter.convert("Tomate", 10.0, UnitEnum.PIECE, UnitEnum.KG) + " KG (attendu: 1.0 KG)");
@@ -206,15 +200,12 @@ public class Main {
         System.out.println("   Conversion de KG vers PCS:");
         System.out.println("   1 KG -> " + UnitConverter.convert("Tomate", 1.0, UnitEnum.KG, UnitEnum.PIECE) + " PCS (attendu: 10.0 PCS)");
         System.out.println("   Conversion impossible: KG vers L -> " + UnitConverter.canConvert("Tomate", UnitEnum.KG, UnitEnum.L));
-
-        // Test 2: Laitue (2 PCS = 1 KG)
         System.out.println("\n2. Laitue:");
         System.out.println("   Conversion de PCS vers KG:");
         System.out.println("   2 PCS -> " + UnitConverter.convert("Laitue", 2.0, UnitEnum.PIECE, UnitEnum.KG) + " KG (attendu: 1.0 KG)");
         System.out.println("   1 PCS -> " + UnitConverter.convert("Laitue", 1.0, UnitEnum.PIECE, UnitEnum.KG) + " KG (attendu: 0.5 KG)");
         System.out.println("   Conversion impossible: PCS vers L -> " + UnitConverter.canConvert("Laitue", UnitEnum.PIECE, UnitEnum.L));
 
-        // Test 3: Chocolat (10 PCS = 1 KG = 2.5 L)
         System.out.println("\n3. Chocolat:");
         System.out.println("   Conversion de PCS vers KG:");
         System.out.println("   10 PCS -> " + UnitConverter.convert("Chocolat", 10.0, UnitEnum.PIECE, UnitEnum.KG) + " KG (attendu: 1.0 KG)");
@@ -226,14 +217,12 @@ public class Main {
         System.out.println("   Conversion de PCS vers L:");
         System.out.println("   10 PCS -> " + UnitConverter.convert("Chocolat", 10.0, UnitEnum.PIECE, UnitEnum.L) + " L (attendu: 2.5 L)");
 
-        // Test 4: Poulet (8 PCS = 1 KG)
         System.out.println("\n4. Poulet:");
         System.out.println("   Conversion de PCS vers KG:");
         System.out.println("   8 PCS -> " + UnitConverter.convert("Poulet", 8.0, UnitEnum.PIECE, UnitEnum.KG) + " KG (attendu: 1.0 KG)");
         System.out.println("   4 PCS -> " + UnitConverter.convert("Poulet", 4.0, UnitEnum.PIECE, UnitEnum.KG) + " KG (attendu: 0.5 KG)");
         System.out.println("   Conversion impossible: PCS vers L -> " + UnitConverter.canConvert("Poulet", UnitEnum.PIECE, UnitEnum.L));
 
-        // Test 5: Beurre (4 PCS = 1 KG = 5 L)
         System.out.println("\n5. Beurre:");
         System.out.println("   Conversion de PCS vers KG:");
         System.out.println("   4 PCS -> " + UnitConverter.convert("Beurre", 4.0, UnitEnum.PIECE, UnitEnum.KG) + " KG (attendu: 1.0 KG)");
@@ -244,8 +233,6 @@ public class Main {
         System.out.println("   1 KG -> " + UnitConverter.convert("Beurre", 1.0, UnitEnum.KG, UnitEnum.L) + " L (attendu: 5.0 L)");
         System.out.println("   Conversion de PCS vers L:");
         System.out.println("   4 PCS -> " + UnitConverter.convert("Beurre", 4.0, UnitEnum.PIECE, UnitEnum.L) + " L (attendu: 5.0 L)");
-
-        // Test 6: Ingrédient inconnu
         System.out.println("\n6. Ingrédient inconnu (Huile):");
         System.out.println("   Conversion de L vers KG -> " + UnitConverter.convert("Huile", 1.0, UnitEnum.L, UnitEnum.KG));
         System.out.println("   (Attendu: null car pas de configuration)");
@@ -262,11 +249,11 @@ public class Main {
         double stockChocolat = 3.0;
         double stockBeurre = 2.5;
 
-        double sortieLaitue = UnitConverter.convertToKg("Laitue", 2.0, UnitEnum.PIECE); // 2 PCS -> KG
-        double sortieTomate = UnitConverter.convertToKg("Tomate", 5.0, UnitEnum.PIECE); // 5 PCS -> KG
-        double sortiePoulet = UnitConverter.convertToKg("Poulet", 4.0, UnitEnum.PIECE); // 4 PCS -> KG
-        double sortieChocolat = UnitConverter.convertToKg("Chocolat", 1.0, UnitEnum.L); // 1 L -> KG
-        double sortieBeurre = UnitConverter.convertToKg("Beurre", 1.0, UnitEnum.L); // 1 L -> KG
+        double sortieLaitue = UnitConverter.convertToKg("Laitue", 2.0, UnitEnum.PIECE);
+        double sortieTomate = UnitConverter.convertToKg("Tomate", 5.0, UnitEnum.PIECE);
+        double sortiePoulet = UnitConverter.convertToKg("Poulet", 4.0, UnitEnum.PIECE);
+        double sortieChocolat = UnitConverter.convertToKg("Chocolat", 1.0, UnitEnum.L);
+        double sortieBeurre = UnitConverter.convertToKg("Beurre", 1.0, UnitEnum.L);
 
         System.out.println("Conversions des sorties en KG:");
         System.out.printf("  Laitue: 2 PCS = %.2f KG (attendu: 1.0 KG)%n", sortieLaitue);
@@ -400,6 +387,124 @@ public class Main {
             System.out.println("✓ Tous les calculs sont conformes aux attentes du bonus!");
         } else {
             System.out.println("✗ Certains calculs sont incorrects");
+        }
+    }
+
+    private static void testCommandesEtVentes(DataRetriever retriever) {
+        System.out.println("=== TEST DES COMMANDES ET VENTES (K2) ===");
+
+        try {
+            // Générer un UUID unique pour cette exécution de test
+            String uuid = UUID.randomUUID().toString().substring(0, 8);
+            String referenceCommande1 = "CMD-" + uuid + "-001";
+            String referenceCommande2 = "CMD-" + uuid + "-002";
+            String referenceCommande3 = "CMD-" + uuid + "-003";
+
+            // 1. Créer une commande
+            System.out.println("\n1. Création d'une commande...");
+            Order nouvelleCommande = new Order();
+            nouvelleCommande.setReference(referenceCommande1);
+            nouvelleCommande.setPaymentStatus(PaymentStatusEnum.UNPAID);
+
+            Order commandeSauvee = retriever.saveOrder(nouvelleCommande);
+            System.out.println("✓ Commande créée avec ID: " + commandeSauvee.getId() +
+                    ", Référence: " + commandeSauvee.getReference() +
+                    ", Statut: " + commandeSauvee.getPaymentStatus());
+
+            // 2. Récupérer une commande par référence
+            System.out.println("\n2. Récupération de la commande par référence...");
+            Order commandeTrouvee = retriever.findOrderByReference(referenceCommande1);
+            if (commandeTrouvee != null) {
+                System.out.println("✓ Commande trouvée: " + commandeTrouvee);
+            } else {
+                System.out.println("✗ Commande non trouvée !");
+            }
+
+            // 3. Marquer la commande comme payée
+            System.out.println("\n3. Marquer la commande comme payée...");
+            commandeTrouvee.setPaymentStatus(PaymentStatusEnum.PAID);
+            commandeTrouvee = retriever.saveOrder(commandeTrouvee);
+            System.out.println("✓ Statut de paiement mis à jour: " + commandeTrouvee.getPaymentStatus());
+
+            // 4. Tenter de modifier une commande payée (doit lever une exception)
+            System.out.println("\n4. Tentative de modification d'une commande payée...");
+            try {
+                commandeTrouvee.setReference("CMD-MODIFIEE-" + uuid);
+                retriever.saveOrder(commandeTrouvee);
+                System.out.println("✗ ERREUR: La modification a réussi alors qu'elle aurait dû échouer !");
+            } catch (IllegalStateException e) {
+                System.out.println("✓ Exception levée correctement: " + e.getMessage());
+            }
+
+            // 5. Créer une vente à partir de la commande payée
+            System.out.println("\n5. Création d'une vente à partir de la commande payée...");
+            Sale vente = retriever.createSaleFrom(commandeTrouvee);
+            System.out.println("✓ Vente créée avec ID: " + vente.getId() +
+                    ", pour la commande ID: " + vente.getOrderId() +
+                    ", Date: " + vente.getSaleDatetime());
+
+            // 6. Tenter de créer une deuxième vente pour la même commande (doit lever une exception)
+            System.out.println("\n6. Tentative de création d'une deuxième vente pour la même commande...");
+            try {
+                Sale vente2 = retriever.createSaleFrom(commandeTrouvee);
+                System.out.println("✗ ERREUR: La deuxième vente a été créée !");
+            } catch (IllegalStateException e) {
+                System.out.println("✓ Exception levée correctement: " + e.getMessage());
+            }
+
+            // 7. Tenter de créer une vente pour une commande non payée
+            System.out.println("\n7. Tentative de création d'une vente pour une commande non payée...");
+            Order commandeNonPayee = new Order();
+            commandeNonPayee.setReference(referenceCommande2);
+            commandeNonPayee.setPaymentStatus(PaymentStatusEnum.UNPAID);
+            commandeNonPayee = retriever.saveOrder(commandeNonPayee);
+            try {
+                Sale vente3 = retriever.createSaleFrom(commandeNonPayee);
+                System.out.println("✗ ERREUR: La vente a été créée pour une commande non payée !");
+            } catch (IllegalStateException e) {
+                System.out.println("✓ Exception levée correctement: " + e.getMessage());
+            }
+
+            // 8. Tester avec une commande qui n'existe pas
+            System.out.println("\n8. Recherche d'une commande qui n'existe pas...");
+            Order commandeInexistante = retriever.findOrderByReference("CMD-INEXISTANT-" + uuid);
+            if (commandeInexistante == null) {
+                System.out.println("✓ Commande non trouvée (comportement attendu)");
+            } else {
+                System.out.println("✗ Commande trouvée alors qu'elle ne devrait pas exister");
+            }
+
+            // 9. Tester la mise à jour d'une commande non payée (nouveau test)
+            System.out.println("\n9. Test de mise à jour d'une commande non payée...");
+            Order commandePourUpdate = new Order();
+            commandePourUpdate.setReference(referenceCommande3);
+            commandePourUpdate.setPaymentStatus(PaymentStatusEnum.UNPAID);
+            commandePourUpdate = retriever.saveOrder(commandePourUpdate);
+            System.out.println("✓ Commande créée avec statut UNPAID");
+
+            // Mettre à jour en PAID
+            commandePourUpdate.setPaymentStatus(PaymentStatusEnum.PAID);
+            commandePourUpdate = retriever.saveOrder(commandePourUpdate);
+            System.out.println("✓ Commande mise à jour en PAID: ID=" + commandePourUpdate.getId());
+
+            System.out.println("\n10. Création d'une vente pour la commande payée...");
+            Sale autreVente = retriever.createSaleFrom(commandePourUpdate);
+            System.out.println("✓ Vente créée pour la nouvelle commande payée: ID=" + autreVente.getId());
+
+            System.out.println("\n11. Test de modification d'une commande non payée...");
+            Order commandeModifiable = new Order();
+            commandeModifiable.setReference("CMD-MOD-" + uuid);
+            commandeModifiable.setPaymentStatus(PaymentStatusEnum.UNPAID);
+            commandeModifiable = retriever.saveOrder(commandeModifiable);
+
+            commandeModifiable.setReference("CMD-MOD-2-" + uuid);
+            commandeModifiable = retriever.saveOrder(commandeModifiable);
+            System.out.println("✓ Commande non payée modifiée avec succès");
+
+
+        } catch (Exception e) {
+            System.out.println("✗ Erreur lors des tests de commandes et ventes: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 }
