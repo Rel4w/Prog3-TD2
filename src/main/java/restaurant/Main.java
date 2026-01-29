@@ -1,6 +1,6 @@
 package restaurant;
 
-import restaurant.database.DataRetriever;
+/*import restaurant.database.DataRetriever;
 import restaurant.models.Ingredient;
 import restaurant.models.StockMovement;
 import restaurant.models.Order;
@@ -495,5 +495,33 @@ public class Main {
             System.out.println("✗ Erreur lors des tests de commandes et ventes: " + e.getMessage());
             e.printStackTrace();
         }
+    }
+}*/
+
+import restaurant.database.DataRetriever;
+import restaurant.models.Order;
+import java.sql.Connection;
+import java.sql.Statement;
+import java.sql.SQLException;
+import restaurant.database.DBConnection;
+
+public class Main {
+    public static void main(String[] args) {
+
+        try (Connection conn = DBConnection.getDBConnection();
+             Statement stmt = conn.createStatement()) {
+            stmt.execute("DELETE FROM sale");
+            stmt.execute("DELETE FROM order_dish");
+            stmt.execute("DELETE FROM \"order\"");
+            stmt.execute("INSERT INTO \"order\" (id, reference, payment_status) VALUES (1, '201', 'PAID')");
+            stmt.execute("INSERT INTO sale (id, order_id) VALUES (1, 1)");
+            stmt.execute("INSERT INTO \"order\" (id, reference, payment_status) VALUES (2, '202', 'UNPAID')");
+        } catch (SQLException e) {
+            // Ignorer
+        }
+
+        DataRetriever data = new DataRetriever();
+        Order o = data.findOrderByReference("201");
+        System.out.print(o);
     }
 }

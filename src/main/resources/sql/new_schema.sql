@@ -68,10 +68,8 @@ CREATE INDEX idx_dish_selling_price ON Dish(selling_price);
 CREATE INDEX idx_stockmovement_ingredient ON stockmovement(id_ingredient);
 CREATE INDEX idx_stockmovement_datetime ON stockmovement(creation_datetime);
 
--- Enum pour le statut de paiement
 CREATE TYPE payment_status_enum AS ENUM ('UNPAID', 'PAID');
 
--- Table des commandes
 CREATE TABLE "order" (
                          id SERIAL PRIMARY KEY,
                          reference VARCHAR(255) NOT NULL UNIQUE,
@@ -79,7 +77,6 @@ CREATE TABLE "order" (
                          order_datetime TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
--- Table des ventes
 CREATE TABLE sale (
                       id SERIAL PRIMARY KEY,
                       order_id INT NOT NULL UNIQUE,
@@ -91,7 +88,6 @@ CREATE TABLE sale (
                               ON DELETE CASCADE
 );
 
--- Table de liaison entre commande et plats
 CREATE TABLE order_dish (
                             id SERIAL PRIMARY KEY,
                             order_id INT NOT NULL,
@@ -111,3 +107,17 @@ CREATE TABLE order_dish (
                             CONSTRAINT unique_order_dish
                                 UNIQUE (order_id, dish_id)
 );
+
+DELETE from order_dish;
+DELETE from "order";
+DELETE from sale;
+
+INSERT INTO "order" (id, reference, payment_status)
+VALUES (1, '201', 'PAID');
+
+INSERT INTO sale (id, order_id, sale_datetime)
+VALUES (1, 1, CURRENT_TIMESTAMP);
+
+INSERT INTO "order" (id, reference, payment_status)
+VALUES (2, '202', 'UNPAID');
+
