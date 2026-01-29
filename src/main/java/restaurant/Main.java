@@ -394,13 +394,11 @@ public class Main {
         System.out.println("=== TEST DES COMMANDES ET VENTES (K2) ===");
 
         try {
-            // Générer un UUID unique pour cette exécution de test
             String uuid = UUID.randomUUID().toString().substring(0, 8);
             String referenceCommande1 = "CMD-" + uuid + "-001";
             String referenceCommande2 = "CMD-" + uuid + "-002";
             String referenceCommande3 = "CMD-" + uuid + "-003";
 
-            // 1. Créer une commande
             System.out.println("\n1. Création d'une commande...");
             Order nouvelleCommande = new Order();
             nouvelleCommande.setReference(referenceCommande1);
@@ -411,7 +409,6 @@ public class Main {
                     ", Référence: " + commandeSauvee.getReference() +
                     ", Statut: " + commandeSauvee.getPaymentStatus());
 
-            // 2. Récupérer une commande par référence
             System.out.println("\n2. Récupération de la commande par référence...");
             Order commandeTrouvee = retriever.findOrderByReference(referenceCommande1);
             if (commandeTrouvee != null) {
@@ -420,13 +417,11 @@ public class Main {
                 System.out.println("✗ Commande non trouvée !");
             }
 
-            // 3. Marquer la commande comme payée
             System.out.println("\n3. Marquer la commande comme payée...");
             commandeTrouvee.setPaymentStatus(PaymentStatusEnum.PAID);
             commandeTrouvee = retriever.saveOrder(commandeTrouvee);
             System.out.println("✓ Statut de paiement mis à jour: " + commandeTrouvee.getPaymentStatus());
 
-            // 4. Tenter de modifier une commande payée (doit lever une exception)
             System.out.println("\n4. Tentative de modification d'une commande payée...");
             try {
                 commandeTrouvee.setReference("CMD-MODIFIEE-" + uuid);
@@ -436,14 +431,12 @@ public class Main {
                 System.out.println("✓ Exception levée correctement: " + e.getMessage());
             }
 
-            // 5. Créer une vente à partir de la commande payée
             System.out.println("\n5. Création d'une vente à partir de la commande payée...");
             Sale vente = retriever.createSaleFrom(commandeTrouvee);
             System.out.println("✓ Vente créée avec ID: " + vente.getId() +
                     ", pour la commande ID: " + vente.getOrderId() +
                     ", Date: " + vente.getSaleDatetime());
 
-            // 6. Tenter de créer une deuxième vente pour la même commande (doit lever une exception)
             System.out.println("\n6. Tentative de création d'une deuxième vente pour la même commande...");
             try {
                 Sale vente2 = retriever.createSaleFrom(commandeTrouvee);
@@ -452,7 +445,6 @@ public class Main {
                 System.out.println("✓ Exception levée correctement: " + e.getMessage());
             }
 
-            // 7. Tenter de créer une vente pour une commande non payée
             System.out.println("\n7. Tentative de création d'une vente pour une commande non payée...");
             Order commandeNonPayee = new Order();
             commandeNonPayee.setReference(referenceCommande2);
@@ -465,7 +457,6 @@ public class Main {
                 System.out.println("✓ Exception levée correctement: " + e.getMessage());
             }
 
-            // 8. Tester avec une commande qui n'existe pas
             System.out.println("\n8. Recherche d'une commande qui n'existe pas...");
             Order commandeInexistante = retriever.findOrderByReference("CMD-INEXISTANT-" + uuid);
             if (commandeInexistante == null) {
@@ -474,7 +465,6 @@ public class Main {
                 System.out.println("✗ Commande trouvée alors qu'elle ne devrait pas exister");
             }
 
-            // 9. Tester la mise à jour d'une commande non payée (nouveau test)
             System.out.println("\n9. Test de mise à jour d'une commande non payée...");
             Order commandePourUpdate = new Order();
             commandePourUpdate.setReference(referenceCommande3);
@@ -482,7 +472,6 @@ public class Main {
             commandePourUpdate = retriever.saveOrder(commandePourUpdate);
             System.out.println("✓ Commande créée avec statut UNPAID");
 
-            // Mettre à jour en PAID
             commandePourUpdate.setPaymentStatus(PaymentStatusEnum.PAID);
             commandePourUpdate = retriever.saveOrder(commandePourUpdate);
             System.out.println("✓ Commande mise à jour en PAID: ID=" + commandePourUpdate.getId());
